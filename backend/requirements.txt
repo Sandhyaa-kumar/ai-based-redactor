@@ -1,0 +1,8 @@
+PyPDF2
+pdfplumber
+fitz
+pdf2image
+Pillow
+pytesseract
+spacy
+flask
