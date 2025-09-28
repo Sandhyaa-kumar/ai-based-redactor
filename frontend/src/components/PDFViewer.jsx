@@ -1,71 +1,65 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { Document, Page, pdfjs } from 'react-pdf';
-import { 
-  Download, 
-  Save, 
-  Eye, 
-  Square, 
-  Undo, 
-  Redo, 
-  ZoomIn, 
+import React, { useState, useRef, useCallback, useMemo } from "react";
+import { Document, Page, pdfjs } from "react-pdf";
+import workerSrc from "pdfjs-dist/build/pdf.worker.min.js?url";
+import {
+  Download,
+  Save,
+  Eye,
+  Square,
+  Undo,
+  Redo,
+  ZoomIn,
   ZoomOut,
   Type,
   MousePointer,
   ChevronLeft,
-  ChevronRight
-} from 'lucide-react';
+  ChevronRight,
+} from "lucide-react";
 
-// Set up PDF.js worker with proper configuration
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.js',
-  import.meta.url,
-).toString();
+pdfjs.GlobalWorkerOptions.workerSrc = workerSrc;
 
 export default function PDFViewer({ file, mode }) {
-  const [activeTool, setActiveTool] = useState('rectangle');
+  const [activeTool, setActiveTool] = useState("rectangle");
   const [isDrawing, setIsDrawing] = useState(false);
   const [shapes, setShapes] = useState([]);
   const [redoStack, setRedoStack] = useState([]);
   const [currentShape, setCurrentShape] = useState(null);
-  const [selectedColor, setSelectedColor] = useState('#000000');
+  const [selectedColor, setSelectedColor] = useState("#000000");
   const [showPreview, setShowPreview] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(100);
   const [currentPage, setCurrentPage] = useState(1);
   const [numPages, setNumPages] = useState(0);
-  const [pdfUrl, setPdfUrl] = useState('');
   const [pageWidth, setPageWidth] = useState(0);
   const [pageHeight, setPageHeight] = useState(0);
-  
+
   const svgRef = useRef(null);
   const viewerRef = useRef(null);
   const pageRefs = useRef({});
 
-  // Create PDF URL from file
-  useEffect(() => {
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setPdfUrl(url);
-      
-      return () => {
-        URL.revokeObjectURL(url);
-      };
-    }
-  }, [file]);
-
   const colors = [
-    '#000000', // Black
-    '#ef4444', // Red
-    '#3b82f6', // Blue
-    '#10b981', // Green
-    '#f59e0b', // Amber
-    '#8b5cf6', // Purple
+    "#000000", // Black
+    "#ef4444", // Red
+    "#3b82f6", // Blue
+    "#10b981", // Green
+    "#f59e0b", // Amber
+    "#8b5cf6", // Purple
   ];
 
   const tools = [
-    { id: 'select', icon: MousePointer, label: 'Select' },
-    { id: 'rectangle', icon: Square, label: 'Rectangle' },
-    { id: 'text-blur', icon: Type, label: 'Text Blur' },
+    { id: "select", icon: MousePointer, label: "Select" },
+    { id: "rectangle", icon: Square, label: "Rectangle" },
+    { id: "text-blur", icon: Type, label: "Text Blur" },
   ];
+
+  // Memoized options for PDF rendering to avoid re-renders
+  const pdfOptions = useMemo(
+    () => ({
+      cMapUrl: "https://unpkg.com/pdfjs-dist@3.11.174/cmaps/",
+      cMapPacked: true,
+      standardFontDataUrl: "https://unpkg.com/pdfjs-dist@3.11.174/standard_fonts/",
+    }),
+    []
+  );
 
   const onDocumentLoadSuccess = ({ numPages }) => {
     setNumPages(numPages);
@@ -78,106 +72,94 @@ export default function PDFViewer({ file, mode }) {
     setPageHeight(height);
   };
 
-  const handleMouseDown = useCallback((e, pageNumber) => {
-    if (mode !== 'manual' || activeTool === 'select') return;
-    
-    const pageElement = pageRefs.current[pageNumber];
-    if (!pageElement) return;
+  // Drawing mouse event handlers
+  const handleMouseDown = useCallback(
+    (e, pageNumber) => {
+      if (mode !== "manual" || activeTool === "select") return;
+      const pageElement = pageRefs.current[pageNumber];
+      if (!pageElement) return;
+      const rect = pageElement.getBoundingClientRect();
 
-    const rect = pageElement.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / (zoomLevel / 100);
-    const y = (e.clientY - rect.top) / (zoomLevel / 100);
+      const x = (e.clientX - rect.left) / (zoomLevel / 100);
+      const y = (e.clientY - rect.top) / (zoomLevel / 100);
 
-    setIsDrawing(true);
-    setCurrentShape({
-      id: Date.now().toString(),
-      type: activeTool === 'rectangle' ? 'rectangle' : 'text-blur',
-      x,
-      y,
-      width: 0,
-      height: 0,
-      color: selectedColor,
-      page: pageNumber
-    });
-  }, [mode, activeTool, selectedColor, zoomLevel]);
+      setIsDrawing(true);
+      setCurrentShape({
+        id: Date.now().toString(),
+        type: activeTool === "rectangle" ? "rectangle" : "text-blur",
+        x,
+        y,
+        width: 0,
+        height: 0,
+        color: selectedColor,
+        page: pageNumber,
+      });
+    },
+    [mode, activeTool, selectedColor, zoomLevel]
+  );
 
-  const handleMouseMove = useCallback((e, pageNumber) => {
-    if (!isDrawing || !currentShape || currentShape.page !== pageNumber) return;
-
-    const pageElement = pageRefs.current[pageNumber];
-    if (!pageElement) return;
-
-    const rect = pageElement.getBoundingClientRect();
-    const currentX = (e.clientX - rect.left) / (zoomLevel / 100);
-    const currentY = (e.clientY - rect.top) / (zoomLevel / 100);
-
-    setCurrentShape(prev => ({
-      ...prev,
-      width: Math.abs(currentX - (prev?.x || 0)),
-      height: Math.abs(currentY - (prev?.y || 0)),
-      x: Math.min(currentX, prev?.x || 0),
-      y: Math.min(currentY, prev?.y || 0)
-    }));
-  }, [isDrawing, currentShape, zoomLevel]);
+  const handleMouseMove = useCallback(
+    (e, pageNumber) => {
+      if (!isDrawing || !currentShape || currentShape.page !== pageNumber) return;
+      const pageElement = pageRefs.current[pageNumber];
+      if (!pageElement) return;
+      const rect = pageElement.getBoundingClientRect();
+      const currentX = (e.clientX - rect.left) / (zoomLevel / 100);
+      const currentY = (e.clientY - rect.top) / (zoomLevel / 100);
+      setCurrentShape((prev) => ({
+        ...prev,
+        width: Math.abs(currentX - (prev?.x || 0)),
+        height: Math.abs(currentY - (prev?.y || 0)),
+        x: Math.min(currentX, prev?.x || 0),
+        y: Math.min(currentY, prev?.y || 0),
+      }));
+    },
+    [isDrawing, currentShape, zoomLevel]
+  );
 
   const handleMouseUp = useCallback(() => {
     if (currentShape && currentShape.width && currentShape.height) {
-      setShapes(prev => {
+      setShapes((prev) => {
         const newShapes = [...prev, currentShape];
         return newShapes;
       });
-      setRedoStack([]); // Clear redo stack when new action is performed
+      setRedoStack([]); // clear redo stack on new action
     }
     setIsDrawing(false);
     setCurrentShape(null);
   }, [currentShape]);
 
+  // Undo & Redo handlers
   const handleUndo = () => {
     if (shapes.length === 0) return;
-    
     const lastShape = shapes[shapes.length - 1];
-    setRedoStack(prev => [...prev, [lastShape]]);
-    setShapes(prev => prev.slice(0, -1));
+    setRedoStack((prev) => [...prev, [lastShape]]);
+    setShapes((prev) => prev.slice(0, -1));
   };
 
   const handleRedo = () => {
     if (redoStack.length === 0) return;
-    
     const shapesToRestore = redoStack[redoStack.length - 1];
-    setShapes(prev => [...prev, ...shapesToRestore]);
-    setRedoStack(prev => prev.slice(0, -1));
+    setShapes((prev) => [...prev, ...shapesToRestore]);
+    setRedoStack((prev) => prev.slice(0, -1));
   };
 
-  const handleZoomIn = () => {
-    setZoomLevel(prev => Math.min(prev + 25, 200));
-  };
+  // Zoom controls
+  const handleZoomIn = () => setZoomLevel((prev) => Math.min(prev + 25, 200));
+  const handleZoomOut = () => setZoomLevel((prev) => Math.max(prev - 25, 50));
 
-  const handleZoomOut = () => {
-    setZoomLevel(prev => Math.max(prev - 25, 50));
-  };
+  // Page navigation
+  const handlePreviousPage = () => setCurrentPage((prev) => Math.max(1, prev - 1));
+  const handleNextPage = () => setCurrentPage((prev) => Math.min(numPages, prev + 1));
 
-  const handlePreviousPage = () => {
-    setCurrentPage(prev => Math.max(1, prev - 1));
-  };
-
-  const handleNextPage = () => {
-    setCurrentPage(prev => Math.min(numPages, prev + 1));
-  };
-
-  const handleSave = () => {
-    console.log('Saving redacted PDF with shapes:', shapes);
-    // Implementation for saving redacted PDF
-  };
-
+  // Placeholder Save & Download (add your backend / file management later)
+  const handleSave = () => console.log("Save redaction data", shapes);
   const handleDownload = () => {
-    console.log('Downloading redacted PDF');
-    // Implementation for downloading the redacted PDF
-    const link = document.createElement('a');
-    link.href = pdfUrl;
-    link.download = `redacted_${file.name}`;
-    link.click();
+    console.log("Download redacted PDF");
+    // You can implement actual PDF generation or use backend for this
   };
 
+  // Render redaction overlay for current page
   const renderPageOverlay = (pageNumber) => (
     <div
       key={`overlay-${pageNumber}`}
@@ -185,22 +167,19 @@ export default function PDFViewer({ file, mode }) {
         if (el) pageRefs.current[pageNumber] = el;
       }}
       className={`absolute inset-0 ${
-        activeTool === 'select' ? 'cursor-default' : 
-        activeTool === 'rectangle' ? 'cursor-crosshair' : 
-        'cursor-text'
+        activeTool === "select"
+          ? "cursor-default"
+          : activeTool === "rectangle"
+          ? "cursor-crosshair"
+          : "cursor-text"
       }`}
       onMouseDown={(e) => handleMouseDown(e, pageNumber)}
       onMouseMove={(e) => handleMouseMove(e, pageNumber)}
       onMouseUp={handleMouseUp}
     >
-      {/* SVG Overlay for drawing redaction shapes */}
-      <svg
-        className="absolute inset-0 w-full h-full pointer-events-none"
-        style={{ zIndex: 10 }}
-      >
-        {/* Existing shapes for this page */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none" style={{ zIndex: 10 }}>
         {shapes
-          .filter(shape => shape.page === pageNumber)
+          .filter((shape) => shape.page === pageNumber)
           .map((shape) => (
             <g key={shape.id}>
               <rect
@@ -211,7 +190,7 @@ export default function PDFViewer({ file, mode }) {
                 fill={shape.color}
                 opacity={showPreview ? 0.9 : 0.6}
               />
-              {shape.type === 'text-blur' && (
+              {shape.type === "text-blur" && (
                 <rect
                   x={shape.x * (zoomLevel / 100)}
                   y={shape.y * (zoomLevel / 100)}
@@ -223,8 +202,7 @@ export default function PDFViewer({ file, mode }) {
               )}
             </g>
           ))}
-        
-        {/* Current shape being drawn */}
+
         {currentShape && currentShape.width && currentShape.height && currentShape.page === pageNumber && (
           <rect
             x={currentShape.x * (zoomLevel / 100)}
@@ -235,12 +213,11 @@ export default function PDFViewer({ file, mode }) {
             opacity={0.5}
           />
         )}
-        
-        {/* Blur pattern definition */}
+
         <defs>
           <pattern id="blur-pattern" patternUnits="userSpaceOnUse" width="4" height="4">
-            <rect width="4" height="4" fill="#000000" opacity="0.1"/>
-            <rect width="2" height="2" fill="#000000" opacity="0.2"/>
+            <rect width="4" height="4" fill="#000000" opacity="0.1" />
+            <rect width="2" height="2" fill="#000000" opacity="0.2" />
           </pattern>
         </defs>
       </svg>
@@ -249,22 +226,20 @@ export default function PDFViewer({ file, mode }) {
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
-      {/* Enhanced Toolbar */}
+      {/* Toolbar */}
       <div className="border-b border-gray-200 p-4 bg-gray-50">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-6">
             <h3 className="font-semibold text-gray-900">Manual Redaction</h3>
-            
-            {/* Tool Selection */}
+
+            {/* Tools */}
             <div className="flex items-center space-x-1 bg-white rounded-lg p-1 border border-gray-200">
               {tools.map((tool) => (
                 <button
                   key={tool.id}
                   onClick={() => setActiveTool(tool.id)}
                   className={`flex items-center space-x-2 px-3 py-2 rounded-md transition-all duration-200 ${
-                    activeTool === tool.id
-                      ? 'bg-blue-100 text-blue-700 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-800 hover:bg-gray-50'
+                    activeTool === tool.id ? "bg-blue-100 text-blue-700 shadow-sm" : "text-gray-600 hover:text-gray-800 hover:bg-gray-50"
                   }`}
                 >
                   <tool.icon className="h-4 w-4" />
@@ -272,22 +247,22 @@ export default function PDFViewer({ file, mode }) {
                 </button>
               ))}
             </div>
-            
-            {/* Color Picker */}
+
+            {/* Color picker */}
             <div className="flex items-center space-x-2 bg-white rounded-lg p-2 border border-gray-200">
               {colors.map((color) => (
                 <button
                   key={color}
                   onClick={() => setSelectedColor(color)}
                   className={`w-8 h-8 rounded-lg border-2 transition-all duration-200 hover:scale-110 ${
-                    selectedColor === color ? 'border-gray-400 shadow-md' : 'border-gray-200 hover:border-gray-300'
+                    selectedColor === color ? "border-gray-400 shadow-md" : "border-gray-200 hover:border-gray-300"
                   }`}
                   style={{ backgroundColor: color }}
                 />
               ))}
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             {/* Undo/Redo */}
             <div className="flex items-center space-x-1 bg-white rounded-lg p-1 border border-gray-200">
@@ -308,8 +283,8 @@ export default function PDFViewer({ file, mode }) {
                 <Redo className="h-4 w-4" />
               </button>
             </div>
-            
-            {/* Zoom Controls */}
+
+            {/* Zoom controls */}
             <div className="flex items-center space-x-1 bg-white rounded-lg p-1 border border-gray-200">
               <button
                 onClick={handleZoomOut}
@@ -319,9 +294,7 @@ export default function PDFViewer({ file, mode }) {
               >
                 <ZoomOut className="h-4 w-4" />
               </button>
-              <span className="px-3 py-2 text-sm font-medium text-gray-700 min-w-[60px] text-center">
-                {zoomLevel}%
-              </span>
+              <span className="px-3 py-2 text-sm font-medium text-gray-700 min-w-[60px] text-center">{zoomLevel}%</span>
               <button
                 onClick={handleZoomIn}
                 disabled={zoomLevel >= 200}
@@ -331,20 +304,18 @@ export default function PDFViewer({ file, mode }) {
                 <ZoomIn className="h-4 w-4" />
               </button>
             </div>
-            
-            {/* Preview Toggle */}
+
+            {/* Preview toggle */}
             <button
               onClick={() => setShowPreview(!showPreview)}
               className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors duration-200 ${
-                showPreview
-                  ? 'bg-blue-100 text-blue-700 border border-blue-200'
-                  : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-gray-200 bg-white'
+                showPreview ? "bg-blue-100 text-blue-700 border border-blue-200" : "text-blue-600 hover:text-blue-800 hover:bg-blue-50 border border-gray-200 bg-white"
               }`}
             >
               <Eye className="h-4 w-4" />
-              <span className="font-medium">{showPreview ? 'Hide Preview' : 'Preview'}</span>
+              <span className="font-medium">{showPreview ? "Hide Preview" : "Preview"}</span>
             </button>
-            
+
             {/* Save & Download */}
             <button
               onClick={handleSave}
@@ -353,7 +324,6 @@ export default function PDFViewer({ file, mode }) {
               <Save className="h-4 w-4" />
               <span>Save</span>
             </button>
-            
             <button
               onClick={handleDownload}
               className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg transition-colors duration-200 font-medium"
@@ -365,16 +335,18 @@ export default function PDFViewer({ file, mode }) {
         </div>
       </div>
 
-      {/* PDF Viewer Area */}
-      <div 
-        ref={viewerRef}
-        className="bg-gray-100 min-h-[600px] max-h-[800px] overflow-auto p-6"
-      >
+      {/* PDF Viewer */}
+      <div ref={viewerRef} className="bg-gray-100 min-h-[600px] max-h-[800px] overflow-auto p-6">
         <div className="max-w-4xl mx-auto">
-          {pdfUrl && (
+          {file && (
             <Document
-              file={pdfUrl}
+              key={file}
+              file={file}
+              options={pdfOptions}
               onLoadSuccess={onDocumentLoadSuccess}
+              onLoadError={(error) => {
+                console.error("Error loading PDF:", error);
+              }}
               loading={
                 <div className="flex items-center justify-center h-64">
                   <div className="text-gray-500">Loading PDF...</div>
@@ -385,11 +357,9 @@ export default function PDFViewer({ file, mode }) {
                   <div className="text-red-500">Error loading PDF. Please try again.</div>
                 </div>
               }
-              options={{
-                cMapUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/cmaps/',
-                cMapPacked: true,
-                standardFontDataUrl: 'https://unpkg.com/pdfjs-dist@3.11.174/standard_fonts/',
-              }}
+              renderMode="canvas"
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
             >
               <div className="relative mb-6 mx-auto shadow-lg">
                 <Page
@@ -400,14 +370,14 @@ export default function PDFViewer({ file, mode }) {
                   renderAnnotationLayer={false}
                   className="mx-auto"
                 />
-                {mode === 'manual' && renderPageOverlay(currentPage)}
+                {mode === "manual" && renderPageOverlay(currentPage)}
               </div>
             </Document>
           )}
         </div>
       </div>
-      
-      {/* Page Navigation */}
+
+      {/* Page navigation */}
       <div className="border-t border-gray-200 p-4 bg-gray-50">
         <div className="flex items-center justify-center space-x-4">
           <button
@@ -418,7 +388,7 @@ export default function PDFViewer({ file, mode }) {
             <ChevronLeft className="h-4 w-4" />
             <span>Previous</span>
           </button>
-          
+
           <div className="flex items-center space-x-2">
             <span className="text-sm text-gray-600">Page</span>
             <input
@@ -436,7 +406,7 @@ export default function PDFViewer({ file, mode }) {
             />
             <span className="text-sm text-gray-600">of {numPages}</span>
           </div>
-          
+
           <button
             onClick={handleNextPage}
             disabled={currentPage === numPages}
@@ -447,12 +417,12 @@ export default function PDFViewer({ file, mode }) {
           </button>
         </div>
       </div>
-      
+
       {/* Instructions */}
       <div className="border-t border-gray-200 p-4 bg-gray-50">
         <div className="text-sm text-gray-600 text-center space-y-1">
           <p>
-            <strong>Rectangle Tool:</strong> Click and drag to create redaction rectangles. 
+            <strong>Rectangle Tool:</strong> Click and drag to create redaction rectangles.
             <strong className="ml-4">Text Blur:</strong> Select text areas to apply blur effects.
           </p>
           <p>

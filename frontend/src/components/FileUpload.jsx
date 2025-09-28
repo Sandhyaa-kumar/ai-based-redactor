@@ -18,10 +18,8 @@ export default function FileUpload({ onFileSelect, selectedFile }) {
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragging(false);
-    
     const files = Array.from(e.dataTransfer.files);
     const pdfFile = files.find(file => file.type === 'application/pdf');
-    
     if (pdfFile) {
       onFileSelect(pdfFile);
     }
@@ -88,7 +86,6 @@ export default function FileUpload({ onFileSelect, selectedFile }) {
         <div className="p-6 bg-gray-100 rounded-full">
           <Upload className="h-12 w-12 text-gray-400" />
         </div>
-        
         <div className="space-y-2">
           <h3 className="text-lg font-medium text-gray-900">
             Upload PDF Document
@@ -97,19 +94,16 @@ export default function FileUpload({ onFileSelect, selectedFile }) {
             Drag and drop your PDF file here, or click to browse
           </p>
         </div>
-        
         <button
           onClick={handleBrowseClick}
           className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium"
         >
           Choose File
         </button>
-        
         <p className="text-xs text-gray-400">
           Supports PDF files up to 25MB
         </p>
       </div>
-      
       <input
         ref={fileInputRef}
         type="file"

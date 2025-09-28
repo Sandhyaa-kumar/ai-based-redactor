@@ -1,42 +1,41 @@
-import React, { useState } from 'react';
-import Header from './components/Header';
-import AuthModal from './components/AuthModal';
-import FileUpload from './components/FileUpload';
-import RedactionModeSelector from './components/RedactionModeSelector';
-import PDFViewer from './components/PDFViewer';
+import React, { useState } from "react";
+import Header from "./components/Header";
+import AuthModal from "./components/AuthModal";
+import FileUpload from "./components/FileUpload";
+import RedactionModeSelector from "./components/RedactionModeSelector";
 import FullyAutomatedModule from "./components/FullyAutomatedModule";
-
+import PDFViewer from "./components/PDFViewer";
 
 function App() {
   const [authModal, setAuthModal] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [userName, setUserName] = useState('');
-  const [appState, setAppState] = useState('upload');
+  const [userName, setUserName] = useState("");
+  const [appState, setAppState] = useState("upload");
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedMode, setSelectedMode] = useState(null);
 
   const handleFileSelect = (file) => {
     setSelectedFile(file);
     if (file) {
-      setAppState('mode-selection');
+      setAppState("mode-selection");
     } else {
-      setAppState('upload');
+      setAppState("upload");
     }
   };
 
   const handleModeSelect = (mode) => {
     setSelectedMode(mode);
-    setAppState('redaction');
+    setAppState("redaction");
   };
 
   const handleBackToUpload = () => {
-    setAppState('upload');
+    setAppState("upload");
     setSelectedFile(null);
     setSelectedMode(null);
   };
 
   const handleBackToModeSelection = () => {
-    setAppState('mode-selection');
+    setAppState("mode-selection");
     setSelectedMode(null);
   };
 
@@ -49,15 +48,15 @@ function App() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header
-        onLoginClick={() => setAuthModal('login')}
-        onSignUpClick={() => setAuthModal('signup')}
+        onLoginClick={() => setAuthModal("login")}
+        onSignUpClick={() => setAuthModal("signup")}
         isLoggedIn={isLoggedIn}
         userName={userName}
       />
-      
+
       <main className="container mx-auto px-6 py-12">
         {/* Step 1: Upload */}
-        {appState === 'upload' && (
+        {appState === "upload" && (
           <div className="max-w-2xl mx-auto">
             <div className="text-center mb-8">
               <h1 className="text-4xl font-bold text-gray-900 mb-4">
@@ -67,16 +66,16 @@ function App() {
                 Intelligent document redaction powered by AI
               </p>
             </div>
-            
+
             <FileUpload
               onFileSelect={handleFileSelect}
               selectedFile={selectedFile}
             />
-            
+
             {selectedFile && (
               <div className="text-center mt-6">
                 <button
-                  onClick={() => setAppState('mode-selection')}
+                  onClick={() => setAppState("mode-selection")}
                   className="px-8 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200 font-medium"
                 >
                   Redact Document
@@ -85,17 +84,17 @@ function App() {
             )}
           </div>
         )}
-        
+
         {/* Step 2: Mode Selection */}
-        {appState === 'mode-selection' && selectedFile && (
+        {appState === "mode-selection" && selectedFile && (
           <RedactionModeSelector
             onModeSelect={handleModeSelect}
             onBack={handleBackToUpload}
           />
         )}
-        
+
         {/* Step 3: Redaction */}
-        {appState === 'redaction' && selectedFile && selectedMode && (
+        {appState === "redaction" && selectedFile && selectedMode && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <button
@@ -104,27 +103,27 @@ function App() {
               >
                 ← Back to mode selection
               </button>
-              
+
               <div className="text-sm text-gray-500">
                 File: {selectedFile.name}
               </div>
             </div>
-            
+
             {/* Show Fully Automated or Viewer depending on mode */}
-            {selectedMode === 'automatic' ? (
+            {selectedMode === "automatic" ? (
               <FullyAutomatedModule file={selectedFile} />
-            ) : (
-              <PDFViewer file={selectedFile} mode={selectedMode} />
-            )}
+            ) : selectedMode === "manual" ? (
+              <PDFViewer file={selectedFile} mode="manual" />
+            ) : null}
           </div>
         )}
       </main>
-      
+
       {/* Login/Signup Modal */}
       <AuthModal
         isOpen={authModal !== null}
         onClose={() => setAuthModal(null)}
-        mode={authModal || 'login'}
+        mode={authModal || "login"}
         onAuthSuccess={handleAuthSuccess}
       />
     </div>
