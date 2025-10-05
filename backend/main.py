@@ -1,51 +1,65 @@
 from flask import Flask, request, send_file, jsonify
-from utils.extract_text import extract_text
-from utils.detect_sensitive import detect_sensitive
-from utils.redact_pdf import redact_pdf
-from utils.ocr_utils import ocr_extract_text
+from flask_cors import CORS
 import os
+from utils.extract_text import extract_text
+from utils.entity_detection import get_redaction_suggestions
+from utils.redact_pdf import overlay_redactions, finalize_redact
 
 app = Flask(__name__)
-
-# Ensure output folder exists
+CORS(app)
 OUTPUT_DIR = "output_pdfs"
-if not os.path.exists(OUTPUT_DIR):
-    os.makedirs(OUTPUT_DIR)
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+@app.route("/extract-text", methods=["POST"])
+def extract_text_api():
+    # DEBUG PRINTS
+    print("FILES =>", request.files)
+    print("FORM =>", request.form)
+    print("DATA =>", request.data)
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+    file = request.files['file']
+    print("RECEIVED FILE:", file.filename)  # further debug
+    temp_pdf = os.path.join(OUTPUT_DIR, "temp_extract.pdf")
+    file.save(temp_pdf)
+    print("File saved to:", temp_pdf)
+    result = extract_text(temp_pdf)
+    print("Extraction result (truncated):", str(result)[:500])
+    return jsonify(result)
+
+@app.route("/suggest-redactions", methods=["POST"])
+def suggest_redactions_api():
+    blocks = request.get_json()
+    suggestions = get_redaction_suggestions(blocks)
+    return jsonify(suggestions)
+
+@app.route("/redact-preview", methods=["POST"])
+def redact_preview_api():
+    if 'pdf' not in request.files or 'suggestions' not in request.form:
+        return jsonify({"error": "Missing PDF or suggestions"}), 400
+    file = request.files['pdf']
+    suggestions = request.form['suggestions']
+    import json
+    suggestions = json.loads(suggestions)
+    temp_pdf = os.path.join(OUTPUT_DIR, "temp_preview.pdf")
+    file.save(temp_pdf)
+    preview_pdf = os.path.join(OUTPUT_DIR, "preview_redacted.pdf")
+    overlay_redactions(temp_pdf, preview_pdf, suggestions)
+    return send_file(preview_pdf, as_attachment=True, download_name="preview_redacted.pdf")
 
 @app.route("/redact", methods=["POST"])
-def redact():
-    """
-    Fully Automated Redaction Module:
-    1. Accepts a PDF file
-    2. Extracts text + OCR
-    3. Detects sensitive info
-    4. Redacts PDF
-    5. Returns redacted PDF
-    """
-    if 'pdf' not in request.files:
-        return jsonify({"error": "No PDF file uploaded"}), 400
-
+def redact_api():
+    if 'pdf' not in request.files or 'suggestions' not in request.form:
+        return jsonify({"error": "Missing PDF or suggestions"}), 400
     file = request.files['pdf']
-    temp_pdf = os.path.join(OUTPUT_DIR, "temp.pdf")
+    suggestions = request.form['suggestions']
+    import json
+    suggestions = json.loads(suggestions)
+    temp_pdf = os.path.join(OUTPUT_DIR, "temp_final.pdf")
     file.save(temp_pdf)
-
-    # Step 1: Extract text from PDF
-    text = extract_text(temp_pdf)
-
-    # Step 2: OCR (in case of scanned images)
-    ocr_text = ocr_extract_text(temp_pdf)
-    if ocr_text.strip():
-        text += "\n" + ocr_text
-
-    # Step 3: Detect sensitive information
-    sensitive_words = detect_sensitive(text)
-
-    # Step 4: Redact PDF
-    output_path = os.path.join(OUTPUT_DIR, "redacted.pdf")
-    redact_pdf(temp_pdf, output_path, sensitive_words)
-
-    # Step 5: Send back file
-    return send_file(output_path, as_attachment=True, download_name="redacted.pdf")
+    final_pdf = os.path.join(OUTPUT_DIR, "final_redacted.pdf")
+    finalize_redact(temp_pdf, final_pdf, suggestions)
+    return send_file(final_pdf, as_attachment=True, download_name="final_redacted.pdf")
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000, debug=True)
