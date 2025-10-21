@@ -15,11 +15,7 @@ import {
   ChevronRight
 } from 'lucide-react';
 
-// Set up PDF.js worker with proper configuration
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  'pdfjs-dist/build/pdf.worker.min.js',
-  import.meta.url,
-).toString();
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 export default function PDFViewer({ file, mode }) {
   const [activeTool, setActiveTool] = useState('rectangle');
@@ -71,6 +67,26 @@ export default function PDFViewer({ file, mode }) {
     setNumPages(numPages);
     setCurrentPage(1);
   };
+  // Add this function right after your onDocumentLoadSuccess function
+const onDocumentLoadError = (error) => {
+  console.error('Error loading PDF:', error);
+  console.log('PDF URL:', pdfUrl);
+  console.log('File:', file);
+};
+
+// Also add this useEffect to debug the file and URL
+useEffect(() => {
+  console.log('File prop changed:', file);
+  if (file) {
+    console.log('File name:', file.name);
+    console.log('File type:', file.type);
+    console.log('File size:', file.size);
+  }
+}, [file]);
+
+useEffect(() => {
+  console.log('PDF URL changed:', pdfUrl);
+}, [pdfUrl]);
 
   const onPageLoadSuccess = (page) => {
     const { width, height } = page;
@@ -375,6 +391,7 @@ export default function PDFViewer({ file, mode }) {
             <Document
               file={pdfUrl}
               onLoadSuccess={onDocumentLoadSuccess}
+              onLoadError={onDocumentLoadError}
               loading={
                 <div className="flex items-center justify-center h-64">
                   <div className="text-gray-500">Loading PDF...</div>

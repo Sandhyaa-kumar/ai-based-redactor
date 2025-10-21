@@ -6,3 +6,5 @@ Pillow
 pytesseract
 spacy
 flask
+
+
