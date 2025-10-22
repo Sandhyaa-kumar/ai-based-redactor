@@ -16,6 +16,10 @@ import {
   ChevronRight,
 } from "lucide-react";
 
+<<<<<<< HEAD
+=======
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+>>>>>>> be1487ae6f61477e7a2e9eab6b5805c397de1712
 
 export default function PDFViewer({ file, mode }) {
   // Default tool is 'select' for text selection
@@ -109,6 +113,26 @@ export default function PDFViewer({ file, mode }) {
     setShapes([]); // Clear shapes from previous document
     setRedoStack([]); // Clear redo stack
   };
+  // Add this function right after your onDocumentLoadSuccess function
+const onDocumentLoadError = (error) => {
+  console.error('Error loading PDF:', error);
+  console.log('PDF URL:', pdfUrl);
+  console.log('File:', file);
+};
+
+// Also add this useEffect to debug the file and URL
+useEffect(() => {
+  console.log('File prop changed:', file);
+  if (file) {
+    console.log('File name:', file.name);
+    console.log('File type:', file.type);
+    console.log('File size:', file.size);
+  }
+}, [file]);
+
+useEffect(() => {
+  console.log('PDF URL changed:', pdfUrl);
+}, [pdfUrl]);
 
   // Get original page dimensions on load
   const onPageLoadSuccess = (page) => {
