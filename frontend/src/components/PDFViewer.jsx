@@ -16,10 +16,6 @@ import {
   ChevronRight,
 } from "lucide-react";
 
-<<<<<<< HEAD
-=======
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
->>>>>>> be1487ae6f61477e7a2e9eab6b5805c397de1712
 
 export default function PDFViewer({ file, mode }) {
   // Default tool is 'select' for text selection
