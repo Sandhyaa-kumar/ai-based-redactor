@@ -1,6 +1,7 @@
-fastapi        # API framework
-uvicorn        # ASGI server for FastAPI
-PyMuPDF        # PDF text extraction
-pytesseract    # OCR for images
-Pillow         # Image processing
-spacy          # NLP for entity detection
+Flask
+Flask-Cors
+PyMuPDF
+rapidfuzz
+spacy
+pytesseract
+Pillow
