@@ -4,7 +4,7 @@ import AuthModal from "./components/AuthModal";
 import FileUpload from "./components/FileUpload";
 import RedactionModeSelector from "./components/RedactionModeSelector";
 import RedactionWorkflow from "./components/RedactionWorkflow";
-import FullyAutomatedModule from "./components/FullyAutomatedModule";
+import FullyAutomatic from "./components/FullyAutomatic";
 import PDFViewer from "./components/PDFViewer";
 
 function App() {
@@ -112,7 +112,7 @@ function App() {
 
             {/* Show Fully Automated or Viewer depending on mode */}
             {selectedMode === "automatic" ? (
-              <FullyAutomatedModule file={selectedFile} />
+              <FullyAutomatic file={selectedFile} />
             ) : selectedMode === "manual" ? (
               <PDFViewer file={selectedFile} mode="manual" />
             ) : selectedMode === "semi-automatic" ? (

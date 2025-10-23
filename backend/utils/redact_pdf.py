@@ -4,6 +4,7 @@ PDF redaction and overlay utilities (PyMuPDF)
 
 import fitz
 
+
 def overlay_redactions(pdf_path, output_path, suggestions):
     pdf = fitz.open(pdf_path)
     for s in suggestions:
@@ -18,14 +19,14 @@ def overlay_redactions(pdf_path, output_path, suggestions):
     pdf.save(output_path)
     pdf.close()
 
+
 def finalize_redact(pdf_path, output_path, suggestions):
     pdf = fitz.open(pdf_path)
     for s in suggestions:
         page_idx = s["page"] - 1
         page = pdf[page_idx]
         rect = fitz.Rect(s["x"], s["y"], s["x"] + s["width"], s["y"] + s["height"])
-        # Permanent redaction
-        page.add_redact_annot(rect, fill=(0,0,0))
-        page.apply_redactions()
+        # Draw a filled black rectangle to "redact" the content
+        page.draw_rect(rect, color=(0, 0, 0), fill=(0, 0, 0))
     pdf.save(output_path)
     pdf.close()
