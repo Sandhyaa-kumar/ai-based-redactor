@@ -6,7 +6,7 @@ import RedactionModeSelector from "./components/RedactionModeSelector";
 import RedactionWorkflow from "./components/RedactionWorkflow";
 import FullyAutomatic from "./components/FullyAutomatic";
 import PDFViewer from "./components/PDFViewer";
-
+import SemiAutomatic from "./components/SemiAutomatic";
 function App() {
   const [authModal, setAuthModal] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -116,7 +116,7 @@ function App() {
             ) : selectedMode === "manual" ? (
               <PDFViewer file={selectedFile} mode="manual" />
             ) : selectedMode === "semi-automatic" ? (
-              <RedactionWorkflow file={selectedFile} />
+              <SemiAutomatic file={selectedFile} />
             ) : null}
           </div>
         )}
